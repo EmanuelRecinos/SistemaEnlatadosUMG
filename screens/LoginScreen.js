@@ -1,54 +1,114 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, Button, StyleSheet } from 'react-native';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  Dimensions,
+  Alert,
+} from 'react-native';
+import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import Icon from 'react-native-vector-icons/MaterialIcons';
+import * as Animatable from 'react-native-animatable';
+
+const { width, height } = Dimensions.get('window');
 
 export default function LoginScreen({ navigation }) {
-  const [id, setId] = useState('');
-  const [contraseña, setContraseña] = useState('');
-  const [mensaje, setMensaje] = useState('');
+  const [usuario, setUsuario] = useState('');
+  const [password, setPassword] = useState('');
+  const [mostrarPassword, setMostrarPassword] = useState(false); // estado para mostrar/ocultar contraseña
 
   const iniciarSesion = async () => {
+    if (usuario === '' || password === '') {
+      Alert.alert('Error', 'Por favor completa todos los campos.');
+      return;
+    }
+
     try {
-      const response = await fetch('http://localhost:8080/usuarios/iniciar-sesion', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ id, contraseña }), // Enviamos los datos del usuario
+      const response = await axios.post('http://192.168.0.3:8080/usuarios/iniciar-sesion', {
+        id: Number(usuario),
+        contraseña: password,
       });
-  
-      const data = await response.text(); // Obtenemos el mensaje de la respuesta
-  
-      // Verificamos si el mensaje es el esperado para un inicio de sesión exitoso
-      if (response.ok && data === "Sesión iniciada exitosamente.") {
-        navigation.navigate('Profile'); // Si el inicio de sesión es exitoso, navegamos al perfil
+
+      if (response.data === 'Sesión iniciada exitosamente.') {
+        await AsyncStorage.setItem('usuario', usuario);
+        navigation.replace('Home');
       } else {
-        setMensaje(data); // Si no es exitoso, mostramos el mensaje de error (ej. "Credenciales incorrectas")
+        Alert.alert('Error', response.data);
       }
     } catch (error) {
-      console.error('Error al iniciar sesión:', error);
-      setMensaje('Error al conectar con la API.'); // Mensaje de error si hay un problema con la conexión
+      console.error(error);
+      Alert.alert('Error', 'No se pudo iniciar sesión.');
     }
   };
-  
+
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Iniciar Sesión</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="ID"
-        keyboardType="numeric"
-        onChangeText={setId}
-        value={id}
+      {/* Burbujas decorativas animadas */}
+      <View style={styles.bubble1} />
+      <View style={styles.bubble2} />
+
+      <Animatable.Text animation="fadeInDown" style={styles.hola}>
+        Hola!
+      </Animatable.Text>
+
+      <Text style={styles.bienvenido}>Bienvenido</Text>
+
+      {/* Campo de usuario con icono */}
+      <View style={styles.inputContainer}>
+        <Text style={styles.label}>User</Text>
+        <View style={styles.inputWrapper}>
+          <Icon name="person" size={20} color="#aaa" style={styles.icon} />
+          <TextInput
+            style={styles.input}
+            placeholder="id"
+            placeholderTextColor="#6CA0A6"
+            value={usuario}
+            onChangeText={setUsuario}
+            keyboardType="numeric"
+          />
+        </View>
+      </View>
+
+      {/* Campo de contraseña con toggle de visibilidad */}
+      <View style={styles.inputContainer}>
+        <Text style={styles.label}>Password</Text>
+        <View style={styles.inputWrapper}>
+          <TextInput
+            style={styles.input}
+            placeholder="************"
+            placeholderTextColor="#6CA0A6"
+            secureTextEntry={!mostrarPassword} // aquí cambia según estado
+            value={password}
+            onChangeText={setPassword}
+          />
+          <TouchableOpacity
+            onPress={() => setMostrarPassword(!mostrarPassword)}
+            style={{ padding: 4 }}
+          >
+            <Icon
+              name={mostrarPassword ? 'visibility' : 'visibility-off'}
+              size={20}
+              color="#aaa"
+            />
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      <TouchableOpacity style={styles.button} onPress={iniciarSesion}>
+        <Text style={styles.buttonText}>Log In</Text>
+      </TouchableOpacity>
+
+      {/* Logo con animación */}
+      <Animatable.Image
+        animation="bounceIn"
+        duration={2000}
+        source={require('../assets/LogoUMG.svg.png')}
+        style={styles.logo}
+        resizeMode="contain"
       />
-      <TextInput
-        style={styles.input}
-        placeholder="Contraseña"
-        secureTextEntry
-        onChangeText={setContraseña}
-        value={contraseña}
-      />
-      <Button title="Iniciar Sesión" onPress={iniciarSesion} />
-      {mensaje && <Text style={styles.mensaje}>{mensaje}</Text>}
     </View>
   );
 }
@@ -56,26 +116,87 @@ export default function LoginScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    padding: 24,
     backgroundColor: '#fff',
+    paddingHorizontal: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  title: {
-    fontSize: 24,
-    marginBottom: 24,
-    textAlign: 'center',
+  hola: {
+    fontSize: 22,
+    color: '#1C7C91',
+    fontWeight: 'bold',
+    marginBottom: 10,
+  },
+  bienvenido: {
+    fontSize: 18,
+    color: '#1C7C91',
+    fontWeight: 'bold',
+    marginBottom: 30,
+  },
+  inputContainer: {
+    width: '100%',
+    marginBottom: 20,
+  },
+  label: {
+    fontSize: 14,
+    marginBottom: 5,
+    color: '#333',
+  },
+  inputWrapper: {
+    flexDirection: 'row',
+    backgroundColor: '#E8FCFF',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#D9F3F8',
+  },
+  icon: {
+    marginRight: 8,
   },
   input: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    padding: 12,
-    marginBottom: 16,
-    borderRadius: 8,
-  },
-  mensaje: {
-    marginTop: 16,
+    flex: 1,
+    paddingVertical: 12,
     fontSize: 16,
-    color: 'green',
+    color: '#000',
+  },
+  button: {
+    backgroundColor: '#1C7C91',
+    paddingVertical: 14,
+    paddingHorizontal: 50,
+    borderRadius: 30,
+    marginTop: 20,
+    elevation: 2,
+  },
+  buttonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '600',
     textAlign: 'center',
+  },
+  logo: {
+    width: 120,
+    height: 120,
+    marginTop: 40,
+  },
+  bubble1: {
+    position: 'absolute',
+    width: 120,
+    height: 120,
+    backgroundColor: '#B3ECF2',
+    borderRadius: 60,
+    top: -40,
+    left: -40,
+    opacity: 0.4,
+  },
+  bubble2: {
+    position: 'absolute',
+    width: 80,
+    height: 80,
+    backgroundColor: '#D1F4FA',
+    borderRadius: 40,
+    top: height * 0.7,
+    right: -30,
+    opacity: 0.3,
   },
 });
